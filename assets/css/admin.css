@@ -1,0 +1,7 @@
+/* Polygraph Calculator — стили страницы настроек */
+.pgcalc-wrap code {
+	font-size: 14px;
+	padding: 4px 8px;
+	background: #f0f0f1;
+	border-radius: 4px;
+}

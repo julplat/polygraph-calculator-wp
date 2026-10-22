@@ -15,11 +15,8 @@
 		var inputEl = app.querySelector('[data-input]');
 		var sendBtn = app.querySelector('[data-send]');
 		var resultCol = app.querySelector('[data-result-col]');
-		var saveBtn = app.querySelector('[data-save]');
-		var excelBtn = app.querySelector('[data-excel]');
-		var saveMsg = app.querySelector('[data-save-msg]');
 
-		var state = { params: {}, history: [], lastResult: null, lastParams: null };
+		var state = { params: {}, history: [], lastResult: null, lastParams: null, leadSent: false };
 
 		addBubble('assistant', cfg.i18n.initial);
 
@@ -52,16 +49,15 @@
 		function renderResult(res, params) {
 			state.lastResult = res;
 			state.lastParams = params;
-			saveBtn.disabled = false;
-			excelBtn.disabled = false;
 
 			var typeName = params.type === 'flyer' ? cfg.i18n.flyer : cfg.i18n.booklet;
 			var sizeStr = params.sizeName || (params.size.width + '×' + params.size.height + ' мм');
 			var html = '';
 			html += '<div class="pgc-res-card pgc-res-total">';
-			html += '<h4>💰 ' + esc(cfg.i18n.forClient) + '</h4>';
+			html += '<h4>💰Итого</h4>';
 			html += '<p class="pgc-res-summary">' + esc(typeName) + ' ' + esc(sizeStr) + ', ' + esc(params.quantity) + ' шт, ' + esc(matName(params.materialId)) + ', печать ' + esc(params.printing) + (params.creasing ? ', биговка ' + esc(params.creasingCount || 2) : '') + '</p>';
 			html += '<p class="pgc-res-price">' + fmt(res.total) + '</p>';
+			html += '<p class="pgc-res-disclaimer">' + esc(cfg.i18n.disclaimer) + '</p>';
 			html += '</div>';
 
 			if (cfg.showDetail) {
@@ -80,6 +76,51 @@
 				html += '</div>';
 			}
 			resultCol.innerHTML = html;
+
+			// После итога — сразу форма контакта: имя + телефон, заявка летит менеджеру.
+			if (!state.leadSent) { renderLeadForm(); }
+		}
+
+		function leadConsentHtml() {
+			return '<p class="pgc-privacy pgc-form-privacy">' + esc(cfg.i18n.privacyText) + ' ' +
+				'<a href="' + esc(cfg.i18n.privacyUrl) + '" target="_blank" rel="noopener noreferrer">' +
+				esc(cfg.i18n.privacyLink) + '</a></p>';
+		}
+
+		function renderLeadForm() {
+			var form = document.createElement('div');
+			form.className = 'pgc-save-form';
+			form.innerHTML =
+				'<p class="pgc-form-title">Оставьте контакты — менеджер свяжется с вами и подтвердит стоимость</p>' +
+				'<input class="pgc-in" data-name placeholder="' + esc(cfg.i18n.namePh) + '" />' +
+				'<input class="pgc-in" data-phone type="tel" placeholder="' + esc(cfg.i18n.phonePh) + '" />' +
+				'<button class="pgc-btn pgc-btn-primary" data-ok>' + esc(cfg.i18n.send || 'Отправить') + '</button>' +
+				'<span class="pgc-form-msg" data-form-msg></span>' +
+				leadConsentHtml();
+			resultCol.appendChild(form);
+			form.querySelector('[data-ok]').addEventListener('click', function () {
+				var name = form.querySelector('[data-name]').value.trim();
+				var phone = form.querySelector('[data-phone]').value.trim();
+				var msg = form.querySelector('[data-form-msg]');
+				if (!name || !phone) { msg.textContent = cfg.i18n.required; return; }
+				msg.textContent = '';
+				fetch(cfg.restUrl + 'save', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': cfg.nonce },
+					body: JSON.stringify({ params: state.lastParams, name: name, phone: phone, notify: true })
+				})
+					.then(function (r) { return r.json(); })
+					.then(function (d) {
+						if (d && d.success) {
+							state.leadSent = true;
+							form.innerHTML = '<p class="pgc-form-thanks">✅ ' + esc(cfg.i18n.saved) + '</p>';
+							addBubble('assistant', cfg.i18n.saved);
+						} else {
+							msg.textContent = cfg.i18n.errSend;
+						}
+					})
+					.catch(function () { msg.textContent = cfg.i18n.errSend; });
+			});
 		}
 
 		function row(label, val) {
@@ -88,11 +129,10 @@
 
 		function renderError(err) {
 			state.lastResult = null;
-			saveBtn.disabled = true;
-			excelBtn.disabled = true;
 			var cls = err.needsManager ? 'pgc-res-warn' : 'pgc-res-err';
 			resultCol.innerHTML = '<div class="pgc-res-card ' + cls + '"><p>' + esc(err.message) + '</p>' +
 				(err.needsManager ? '<p class="pgc-note">' + esc(cfg.i18n.managerNote) + '</p>' : '') + '</div>';
+			if (err.needsManager && !state.leadSent) { renderLeadForm(); }
 		}
 
 		function send() {
@@ -142,66 +182,5 @@
 
 		sendBtn.addEventListener('click', send);
 		inputEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') send(); });
-
-		// Сохранение в историю (диалог имени/телефона — прямо под результатом).
-		saveBtn.addEventListener('click', function () {
-			if (!state.lastParams) return;
-			if (resultCol.querySelector('.pgc-save-form')) return;
-			var form = document.createElement('div');
-			form.className = 'pgc-save-form';
-			form.innerHTML = '<input class="pgc-in" data-name placeholder="' + esc(cfg.i18n.namePh) + '"/>' +
-				'<input class="pgc-in" data-phone placeholder="' + esc(cfg.i18n.phonePh) + '"/>' +
-				'<button class="pgc-btn pgc-btn-primary" data-ok>OK</button>';
-			resultCol.appendChild(form);
-			form.querySelector('[data-ok]').addEventListener('click', function () {
-				var name = form.querySelector('[data-name]').value.trim();
-				var phone = form.querySelector('[data-phone]').value.trim();
-				fetch(cfg.restUrl + 'save', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': cfg.nonce },
-					body: JSON.stringify({ params: state.lastParams, name: name, phone: phone, notify: true })
-				})
-					.then(function (r) { return r.json(); })
-					.then(function (d) {
-						saveMsg.textContent = d && d.success ? cfg.i18n.saved : cfg.i18n.errSend;
-						form.remove();
-					})
-					.catch(function () { saveMsg.textContent = cfg.i18n.errSend; });
-			});
-		});
-
-		// Экспорт текущего расчёта в CSV (Excel).
-		excelBtn.addEventListener('click', function () {
-			if (!state.lastResult || !state.lastParams) return;
-			var p = state.lastParams, r = state.lastResult;
-			var rows = [
-				['Параметр', 'Значение'],
-				['Тип', p.type === 'flyer' ? cfg.i18n.flyer : cfg.i18n.booklet],
-				['Размер', p.sizeName || (p.size.width + '×' + p.size.height)],
-				['Количество', p.quantity + ' шт'],
-				['Материал', matName(p.materialId)],
-				['Печать', p.printing],
-				['Биговка', p.creasing ? 'Да (' + (p.creasingCount || 2) + ')' : 'Нет'],
-				['', ''],
-				['--- ДЕТАЛИЗАЦИЯ ---', ''],
-				['Раскладка (k)', r.k + ' шт/лист'],
-				['Листов (N)', r.N],
-				['Материал (N+2)', r.Nplus2 + ' листов'],
-				['Стоимость материала', r.materialCost],
-				['Стоимость печати', r.printCost],
-				['Стоимость резки', r.cutCost],
-				['Стоимость биговки', r.creasingCost],
-				['', ''],
-				['ИТОГО', r.total]
-			];
-			var csv = '\uFEFF' + rows.map(function (row) {
-				return row.map(function (c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(';');
-			}).join('\r\n');
-			var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-			var a = document.createElement('a');
-			a.href = URL.createObjectURL(blob);
-			a.download = 'raschet.csv';
-			a.click();
-		});
 	}
 })();

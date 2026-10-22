@@ -35,15 +35,17 @@ class PGCALC_SHORTCODE {
 				'i18n'      => array(
 					'initial'    => PGCALC_DIALOG::initial_question(),
 					'thinking'   => __( '…', 'polygraph-calculator' ),
-					'save'       => __( 'Сохранить', 'polygraph-calculator' ),
-					'excel'      => __( 'Excel', 'polygraph-calculator' ),
-					'history'    => __( 'История', 'polygraph-calculator' ),
 					'namePh'     => __( 'Ваше имя', 'polygraph-calculator' ),
 					'phonePh'    => __( 'Телефон', 'polygraph-calculator' ),
-					'saved'      => __( 'Расчёт сохранён ✓', 'polygraph-calculator' ),
+					'saved'      => __( 'Спасибо! Менеджер свяжется с вами в ближайшее время.', 'polygraph-calculator' ),
 					'errSend'    => __( 'Ошибка соединения. Попробуйте ещё раз.', 'polygraph-calculator' ),
 					'total'      => __( 'ИТОГО', 'polygraph-calculator' ),
-					'forClient'  => __( 'Итого для клиента:', 'polygraph-calculator' ),
+					'forClient'  => __( 'Итого', 'polygraph-calculator' ),
+					'disclaimer' => __( 'Стоимость услуги ориентировочная, точную стоимость подтвердит менеджер.', 'polygraph-calculator' ),
+					'privacyText' => __( 'Отправляя сообщение, вы соглашаетесь с', 'polygraph-calculator' ),
+					'privacyLink' => __( 'политикой обработки персональных данных.', 'polygraph-calculator' ),
+					'privacyUrl'  => 'https://www.aeroplane-media.ru/licenses-detail/',
+					'required'    => __( 'Укажите имя и телефон.', 'polygraph-calculator' ),
 					'flyer'      => __( 'Листовка', 'polygraph-calculator' ),
 					'booklet'    => __( 'Буклет', 'polygraph-calculator' ),
 					'startHint'  => __( 'Начните диалог для расчёта', 'polygraph-calculator' ),
@@ -73,11 +75,8 @@ class PGCALC_SHORTCODE {
 					<div class="pgc-result-empty"><span>📊</span><p><?php esc_html_e( 'Начните диалог для расчёта', 'polygraph-calculator' ); ?></p></div>
 				</div>
 			</div>
-			<div class="pgc-footer">
-				<button class="pgc-btn pgc-btn-save" data-save disabled>💾 <?php esc_html_e( 'Сохранить', 'polygraph-calculator' ); ?></button>
-				<button class="pgc-btn pgc-btn-excel" data-excel disabled>⬇ Excel</button>
-				<span class="pgc-save-msg" data-save-msg></span>
-			</div>
+			<p class="pgc-disclaimer"><?php esc_html_e( 'Стоимость услуги ориентировочная, точную стоимость подтвердит менеджер.', 'polygraph-calculator' ); ?></p>
+			<p class="pgc-privacy"><?php esc_html_e( 'Отправляя сообщение, вы соглашаетесь с', 'polygraph-calculator' ); ?> <a href="https://www.aeroplane-media.ru/licenses-detail/" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'политикой обработки персональных данных.', 'polygraph-calculator' ); ?></a></p>
 		</div>
 		<?php
 		return ob_get_clean();

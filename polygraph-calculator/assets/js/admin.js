@@ -21,6 +21,31 @@
 		var resultEl = document.getElementById('pgcalc-result');
 		var state = { params: {}, history: [] };
 
+		function request(endpoint, payload) {
+			// Основной путь — WordPress AJAX (admin-ajax.php): авторизация по обычной
+			// куке администратора, «Cookie check failed» от REST здесь невозможен.
+			var url = PGCALC_ADMIN.ajaxUrl + '?action=pgcalc_' + endpoint + '&_wpnonce=' + encodeURIComponent(PGCALC_ADMIN.ajaxNonce);
+			return fetch(url, {
+				method: 'POST',
+				credentials: 'same-origin',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload)
+			}).then(function (r) { return r.json(); }).then(function (d) {
+				if (d && d.success === false && d.data && d.data.message) {
+					return { code: d.data.code || 'error', message: d.data.message };
+				}
+				return (d && d.data !== undefined) ? d.data : d;
+			}).catch(function () {
+				// Запасной путь — REST, если AJAX почему-то недоступен.
+				return fetch(PGCALC_ADMIN.restUrl + endpoint + '?pgc_admin_nonce=' + encodeURIComponent(PGCALC_ADMIN.adminNonce), {
+					method: 'POST',
+					credentials: 'same-origin',
+					headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': PGCALC_ADMIN.nonce },
+					body: JSON.stringify(payload)
+				}).then(function (r) { return r.json(); });
+			});
+		}
+
 		function bubble(role, text) {
 			var d = document.createElement('div');
 			d.className = 'pgcalc-bubble pgcalc-bubble-' + role;
@@ -66,12 +91,7 @@
 			state.history.push({ role: 'user', content: text });
 			var t = bubble('assistant', PGCALC_ADMIN.i18n.sending);
 
-			fetch(PGCALC_ADMIN.restUrl + 'dialog', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': PGCALC_ADMIN.nonce },
-				body: JSON.stringify({ message: text, context: { params: state.params, history: state.history.slice(-20) } })
-			})
-				.then(function (r) { return r.json(); })
+			request('dialog', { message: text, context: { params: state.params, history: state.history.slice(-20) } })
 				.then(function (data) {
 					t.remove();
 					if (data && data.code) { bubble('assistant', data.message || PGCALC_ADMIN.i18n.error); return; }
@@ -106,11 +126,7 @@
 			ping.addEventListener('click', function () {
 				var out = document.getElementById('pgcalc-ai-ping-result');
 				out.textContent = PGCALC_ADMIN.i18n.pingSend;
-				fetch(PGCALC_ADMIN.restUrl + 'ai-ping?pgc_admin_nonce=' + encodeURIComponent(PGCALC_ADMIN.adminNonce), {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': PGCALC_ADMIN.nonce }
-				})
-					.then(function (r) { return r.json(); })
+				request('ai-ping', {})
 					.then(function (d) {
 						out.textContent = (d && d.success) ? (PGCALC_ADMIN.i18n.pingOk + ' — ' + d.answer) : (PGCALC_ADMIN.i18n.pingFail + ((d && d.message) || '?'));
 					})

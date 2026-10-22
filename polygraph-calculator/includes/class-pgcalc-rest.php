@@ -16,6 +16,59 @@ class PGCALC_REST {
 
 	public static function init() {
 		add_action( 'rest_api_init', array( __CLASS__, 'register_routes' ) );
+		// AJAX-дубликат диалога для админки: работает через admin-ajax.php,
+		// где авторизация идёт по обычной куке админа и REST-cookie-проблемы
+		// («Cookie check failed») не существует.
+		add_action( 'wp_ajax_pgcalc_dialog', array( __CLASS__, 'ajax_dialog' ) );
+		add_action( 'wp_ajax_pgcalc_ai_ping', array( __CLASS__, 'ajax_ai_ping' ) );
+	}
+
+	/**
+	 * AJAX-обёртка над /dialog (только для администраторов).
+	 */
+	public static function ajax_dialog() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Недостаточно прав.', 'polygraph-calculator' ) ), 403 );
+		}
+		check_admin_referer( 'pgcalc_admin_ajax' );
+
+		$raw     = file_get_contents( 'php://input' );
+		$decoded = json_decode( $raw, true );
+		if ( ! is_array( $decoded ) ) {
+			$decoded = array(
+				'message' => isset( $_POST['message'] ) ? wp_unslash( $_POST['message'] ) : '', // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+				'context' => array(),
+			);
+		}
+		$req = new WP_REST_Request( 'POST', '/polygraph-calculator/v1/dialog' );
+		$req->set_body_params( $decoded );
+		$resp = self::rest_dialog( $req );
+		self::send_rest_as_json( $resp );
+	}
+
+	/**
+	 * AJAX-обёртка над /ai-ping (только для администраторов).
+	 */
+	public static function ajax_ai_ping() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Недостаточно прав.', 'polygraph-calculator' ) ), 403 );
+		}
+		check_admin_referer( 'pgcalc_admin_ajax' );
+		$resp = self::rest_ai_ping();
+		self::send_rest_as_json( $resp );
+	}
+
+	/**
+	 * Отдать WP_REST_Response / WP_Error как JSON через admin-ajax.
+	 */
+	private static function send_rest_as_json( $resp ) {
+		if ( is_wp_error( $resp ) ) {
+			$data = $resp->get_error_data();
+			$code = is_array( $data ) && isset( $data['status'] ) ? (int) $data['status'] : 400;
+			wp_send_json_error( array( 'message' => $resp->get_error_message(), 'code' => $resp->get_error_code() ), $code );
+		}
+		$status = ( $resp instanceof WP_REST_Response ) ? $resp->get_status() : 200;
+		wp_send_json( rest_ensure_response( $resp )->get_data(), $status ?: 200 );
 	}
 
 	public static function register_routes() {

@@ -480,8 +480,10 @@ class PGCALC_ADMIN {
 			'PGCALC_ADMIN',
 			array(
 				'restUrl'  => esc_url_raw( rest_url( 'polygraph-calculator/v1/' ) ),
+				'ajaxUrl'  => esc_url_raw( admin_url( 'admin-ajax.php' ) ),
 				'nonce'    => wp_create_nonce( 'wp_rest' ),
 				'adminNonce' => wp_create_nonce( 'pgcalc_admin_rest' ),
+				'ajaxNonce'  => wp_create_nonce( 'pgcalc_admin_ajax' ),
 				'i18n'     => array(
 					'initial'  => PGCALC_DIALOG::initial_question(),
 					'sending'  => __( '…', 'polygraph-calculator' ),

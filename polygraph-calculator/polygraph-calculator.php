@@ -3,7 +3,7 @@
  * Plugin Name:       Polygraph Calculator (Калькулятор полиграфии)
  * Plugin URI:        https://example.com/polygraph-calculator
  * Description:       Калькулятор стоимости листовок и буклетов по диалогу с клиентом. Порт приложения «Polygraph»: чат-диалог (парсер или ИИ), точный расчёт по базе знаний, история, Excel-экспорт. Все настройки и диалоги — в отдельном меню админки «Калькулятор Polygraph». Шорткод [polygraph_calculator].
- * Version:           2.0.0
+ * Version:           2.0.2
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            Polygraph Team
@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Прямой доступ запрещён.
 }
 
-define( 'PGCALC_VERSION', '2.0.0' );
+define( 'PGCALC_VERSION', '2.0.2' );
 define( 'PGCALC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PGCALC_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 

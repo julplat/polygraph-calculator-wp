@@ -61,7 +61,30 @@ class PGCALC_REST {
 	}
 
 	public static function perm_admin() {
-		return current_user_can( 'manage_options' );
+		if ( current_user_can( 'manage_options' ) ) {
+			return true;
+		}
+		// Запасной путь, если REST-нонc не прошёл из-за куки-проблем хостинга:
+		// принимаем запрос с корректным отдельным nonce-полем в теле/параметрах.
+		$nonce = '';
+		foreach ( array( 'pgc_admin_nonce', 'nonce' ) as $key ) {
+			$val = $GLOBALS['_REQUEST'][ $key ] ?? null;
+			if ( null === $val && isset( $_REQUEST[ $key ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+				$val = sanitize_text_field( wp_unslash( $_REQUEST[ $key ] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			}
+			if ( is_string( $val ) && '' !== $val ) {
+				$nonce = $val;
+				break;
+			}
+		}
+		if ( '' !== $nonce && wp_verify_nonce( $nonce, 'pgcalc_admin_rest' ) && current_user_can( 'manage_options' ) ) {
+			return true;
+		}
+		return new WP_Error(
+			'pgcalc_forbidden',
+			__( 'Недостаточно прав. Если вы видите эту ошибку будучи администратором — обновите страницу админки (истё cookie-сессия) и повторите действие.', 'polygraph-calculator' ),
+			array( 'status' => rest_authorization_required_code() )
+		);
 	}
 
 	/**

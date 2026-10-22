@@ -159,8 +159,10 @@ class PGCALC_DIALOG {
 			$params['quantity'] = $qty;
 		}
 
-		// Материал
-		$mat = self::detect_material( $lower );
+		// Материал. Как в оригинале: ищем по «нормализованному» тексту
+		// (латиница → кириллица), иначе латинская «a» внутри слов вроде
+		// «флаеры a5» склеивается с цифрой («a5») и ложно детектируется вес 200.
+		$mat = self::detect_material( self::normalize_for_size( $lower ) );
 		if ( $mat ) {
 			$params['materialId'] = $mat;
 		}
@@ -233,9 +235,13 @@ class PGCALC_DIALOG {
 		foreach ( PGCALC_DB::get_materials() as $m ) {
 			if ( false !== mb_strpos( $lower, mb_strtolower( $m->name ) ) ) { return $m->id; }
 		}
-		// Номер "№4" / "материал 4"
+		// Номер "№4" / "материал 4". В оригинальном JS regex срабатывал только на
+		// первой цифре текста (обычно это размер «а5»), поэтому номер материала
+		// реально определялся только когда в тексте нет других цифр. Сохраняем
+		// то же поведение: ищем ЦИФРУ, перед которой нет другой цифры/«№»,
+		// иначе «250» ложно давало бы материал №2.
 		$materials = PGCALC_DB::get_materials();
-		if ( preg_match( '/№?\s*(\d)\s*(?:-й|-ый|материал|бумага|картон)?/u', $lower, $m ) ) {
+		if ( preg_match( '/(?<![0-9№])\s*(\d)(?![0-9])/u', $lower, $m ) ) {
 			$idx = (int) $m[1] - 1;
 			if ( $idx >= 0 && $idx < count( $materials ) ) {
 				if ( false !== mb_strpos( $lower, 'материал' ) || false !== mb_strpos( $lower, 'бумаг' ) || false !== mb_strpos( $lower, 'картон' ) || false !== mb_strpos( $lower, '№' ) ) {

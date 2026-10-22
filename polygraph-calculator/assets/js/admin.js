@@ -106,7 +106,7 @@
 			ping.addEventListener('click', function () {
 				var out = document.getElementById('pgcalc-ai-ping-result');
 				out.textContent = PGCALC_ADMIN.i18n.pingSend;
-				fetch(PGCALC_ADMIN.restUrl + 'ai-ping', {
+				fetch(PGCALC_ADMIN.restUrl + 'ai-ping?pgc_admin_nonce=' + encodeURIComponent(PGCALC_ADMIN.adminNonce), {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': PGCALC_ADMIN.nonce }
 				})

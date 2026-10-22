@@ -109,7 +109,9 @@ $r = PGCALC_ENGINE::calculate( array( 'type' => 'flyer', 'size' => array( 'width
 check( 'Евроформат k=6', $r['result'] && 6 === $r['result']['k'] );
 
 $r = PGCALC_ENGINE::calculate( array( 'type' => 'flyer', 'size' => array( 'width' => 55, 'height' => 20 ), 'quantity' => 100, 'materialId' => 'paper-120', 'printing' => '4+0', 'creasing' => false, 'creasingCount' => 0 ) );
-check( 'Нестандарт 55×20: k=floor(450/55)*floor(320/20)=144', $r['result'] && 144 === $r['result']['k'], json_encode( $r['result'] ) );
+// Оригинальный calculateLayout из knowledgeBase.ts берёт max из двух ориентаций:
+// floor(450/55)*floor(320/20)=8*16=128 vs floor(450/20)*floor(320/55)=22*5=110 => 128.
+check( 'Нестандарт 55×20: k=max(orientations)=128 (как в оригинале)', $r['result'] && 128 === $r['result']['k'], json_encode( $r['result'] ) );
 
 $r = PGCALC_ENGINE::calculate( array( 'type' => 'flyer', 'size' => array( 'width' => 500, 'height' => 400 ), 'quantity' => 100, 'materialId' => 'paper-120', 'printing' => '4+0', 'creasing' => false, 'creasingCount' => 0 ) );
 check( 'Больше листа → needsManager', $r['error'] && $r['error']['needsManager'] );
@@ -138,7 +140,8 @@ $p = PGCALC_DIALOG::process( $p['params'], 'без биговки' );
 check( 'Парсер: «без биговки» → complete, creasing=false', 'complete' === $p['step'] && false === $p['params']['creasing'], json_encode( $p, JSON_UNESCAPED_UNICODE ) );
 
 $p = PGCALC_DIALOG::process( PGCALC_DIALOG::initial_params(), 'флаеры a5 250 экз №2 4+4' );
-check( 'Парсер: флаеры/a5/экз/№2/4+4', 'complete' === $p['step'] && 'paper-105' === $p['params']['materialId'] && 250 === $p['params']['quantity'], json_encode( $p['params'], JSON_UNESCAPED_UNICODE ) );
+// №2 = второй материал в прайсе оригинала = paper-120 (порядок как в knowledgeBase.ts).
+check( 'Парсер: флаеры/a5/экз/№2/4+4', 'complete' === $p['step'] && 'paper-120' === $p['params']['materialId'] && 250 === $p['params']['quantity'], json_encode( $p['params'], JSON_UNESCAPED_UNICODE ) );
 
 echo "\n==== ИТОГО: PASS={$pass} FAIL={$fail} ====\n";
 exit( $fail > 0 ? 1 : 0 );

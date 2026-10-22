@@ -481,6 +481,7 @@ class PGCALC_ADMIN {
 			array(
 				'restUrl'  => esc_url_raw( rest_url( 'polygraph-calculator/v1/' ) ),
 				'nonce'    => wp_create_nonce( 'wp_rest' ),
+				'adminNonce' => wp_create_nonce( 'pgcalc_admin_rest' ),
 				'i18n'     => array(
 					'initial'  => PGCALC_DIALOG::initial_question(),
 					'sending'  => __( '…', 'polygraph-calculator' ),

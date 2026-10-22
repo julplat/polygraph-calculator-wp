@@ -46,10 +46,11 @@
 			return m ? m.name : id;
 		}
 
-		function renderResult(res, params) {
-			state.lastResult = res;
-			state.lastParams = params;
+		function isMobile() {
+			return window.matchMedia && window.matchMedia('(max-width: 780px)').matches;
+		}
 
+		function buildTotalCard(res, params) {
 			var typeName = params.type === 'flyer' ? cfg.i18n.flyer : cfg.i18n.booklet;
 			var sizeStr = params.sizeName || (params.size.width + '×' + params.size.height + ' мм');
 			var html = '';
@@ -59,6 +60,14 @@
 			html += '<p class="pgc-res-price">' + fmt(res.total) + '</p>';
 			html += '<p class="pgc-res-disclaimer">' + esc(cfg.i18n.disclaimer) + '</p>';
 			html += '</div>';
+			return html;
+		}
+
+		function renderResult(res, params) {
+			state.lastResult = res;
+			state.lastParams = params;
+
+			var html = buildTotalCard(res, params);
 
 			if (cfg.showDetail) {
 				html += '<div class="pgc-res-card pgc-res-detail">';
@@ -77,8 +86,18 @@
 			}
 			resultCol.innerHTML = html;
 
-			// После итога — сразу форма контакта: имя + телефон, заявка летит менеджеру.
-			if (!state.leadSent) { renderLeadForm(); }
+			// Мобильная версия: панель справа недоступна — карточка «💰Итого»
+			// и форма контактов появляются прямо внутри диалога.
+			if (isMobile()) {
+				var card = document.createElement('div');
+				card.className = 'pgc-inchat-result';
+				card.innerHTML = buildTotalCard(res, params);
+				chatEl.appendChild(card);
+				chatEl.scrollTop = chatEl.scrollHeight;
+				if (!state.leadSent) { renderLeadForm(true); }
+			} else if (!state.leadSent) {
+				renderLeadForm(false);
+			}
 		}
 
 		function leadConsentHtml() {
@@ -87,7 +106,7 @@
 				esc(cfg.i18n.privacyLink) + '</a></p>';
 		}
 
-		function renderLeadForm() {
+		function renderLeadForm(inChat) {
 			var form = document.createElement('div');
 			form.className = 'pgc-save-form';
 			form.innerHTML =
@@ -97,7 +116,8 @@
 				'<button class="pgc-btn pgc-btn-primary" data-ok>' + esc(cfg.i18n.send || 'Отправить') + '</button>' +
 				'<span class="pgc-form-msg" data-form-msg></span>' +
 				leadConsentHtml();
-			resultCol.appendChild(form);
+			if (inChat) { chatEl.appendChild(form); } else { resultCol.appendChild(form); }
+			chatEl.scrollTop = chatEl.scrollHeight;
 			form.querySelector('[data-ok]').addEventListener('click', function () {
 				var name = form.querySelector('[data-name]').value.trim();
 				var phone = form.querySelector('[data-phone]').value.trim();
@@ -162,7 +182,7 @@
 							addBubble('assistant', data.error.message);
 							renderError(data.error);
 						} else {
-							addBubble('assistant', '✅ Расчёт готов — смотрите справа.');
+							addBubble('assistant', isMobile() ? '✅ Расчёт готов' : '✅ Расчёт готов →');
 							renderResult(data.result, data.params);
 						}
 					} else if (data.step === 'need_manager') {

@@ -87,3 +87,15 @@
 
 /* Плашка-«бейдж» в шапке и круглые кнопки — в стиле чата «Айришка» */
 .pgc-send-btn { background: linear-gradient(150deg, var(--pgc-navy-light) 0%, var(--pgc-navy-mid) 55%, var(--pgc-navy-deep) 100%); color: #fff; border: none; border-radius: 50%; width: 36px; height: 36px; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+
+/* Мобильная версия: карточка «💰Итого» внутри диалога (полный текст как на десктопе) */
+.pgc-inchat-result { align-self: stretch; max-width: 100%; animation: pgcPop .22s cubic-bezier(.2,.9,.3,1.15); }
+.pgc-inchat-result .pgc-res-card { margin-bottom: 0; }
+.pgc-inchat-result .pgc-res-price { font-size: 24px; }
+@keyframes pgcPop { from { opacity: 0; transform: scale(.96) translateY(6px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+@media (max-width: 780px) {
+	.pgc-chat-col { border-right: none; }
+	.pgc-save-form { flex-direction: column; align-items: stretch; }
+	.pgc-in { width: 100%; }
+	.pgc-save-form .pgc-btn-primary { width: 100%; }
+}

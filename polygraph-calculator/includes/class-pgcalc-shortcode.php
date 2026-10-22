@@ -61,7 +61,6 @@ class PGCALC_SHORTCODE {
 		<div class="pgc-app" data-title="<?php echo esc_attr( $atts['title'] ); ?>">
 			<div class="pgc-header">
 				<h3 class="pgc-title"><?php echo esc_html( $atts['title'] ); ?></h3>
-				<span class="pgc-mode-badge"><?php echo 'ai' === get_option( 'pgcalc_dialog_mode', 'parser' ) ? '🤖 ИИ' : '🔧 ' . esc_html__( 'Парсер', 'polygraph-calculator' ); ?></span>
 			</div>
 			<div class="pgc-body">
 				<div class="pgc-chat-col">

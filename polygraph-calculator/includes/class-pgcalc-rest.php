@@ -102,8 +102,16 @@ class PGCalc_Rest {
 		$pre_post = rest_sanitize_boolean( $request->get_param( 'pre_post' ) );
 
 		if ( 'ai' === $settings['calc_mode'] ) {
-			// Режим «только ИИ»: цена за тему × количество тем.
+			// Режим «только ИИ»: если провайдер настроен — считаем нейросетью по базе знаний,
+			// иначе — фиксированная цена за тему.
 			$total = (int) round( $settings['ai_price'] * $issues );
+
+			if ( PGCalc_AI::is_enabled( $settings ) ) {
+				$ai_total = PGCalc_AI::get_instance()->estimate( $issues, $settings );
+				if ( ! is_wp_error( $ai_total ) && $ai_total > 0 ) {
+					$total = $ai_total;
+				}
+			}
 
 			return rest_ensure_response(
 				array(

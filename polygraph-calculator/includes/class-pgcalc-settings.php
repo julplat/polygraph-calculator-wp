@@ -40,6 +40,43 @@ class PGCalc_Settings {
 			'currency'           => 'RUB',  // Валюта: RUB, USD, EUR, KZT, UAH.
 			'notify_email'       => get_option( 'admin_email' ),
 			'enable_rest'        => true,
+
+			// Провайдер ИИ (для реального расчёта стоимости нейросетью).
+			'ai_provider'        => 'none',   // none | openai | anthropic | deepseek | custom.
+			'ai_api_key'         => '',
+			'ai_model'           => 'gpt-4o-mini',
+			'ai_endpoint'        => '',       // Свой URL API (режим custom).
+			'ai_pricing_rules'   => '',       // Прайс/правила для ИИ (текст промпта).
+		);
+	}
+
+	/**
+	 * Провайдеры ИИ: метка => [endpoint по умолчанию, модель по умолчанию].
+	 *
+	 * @return array
+	 */
+	public static function providers() {
+		return array(
+			'openai'    => array(
+				'label'      => 'OpenAI',
+				'endpoint'   => 'https://api.openai.com/v1/chat/completions',
+				'default_model' => 'gpt-4o-mini',
+			),
+			'anthropic' => array(
+				'label'      => 'Anthropic (Claude)',
+				'endpoint'   => 'https://api.anthropic.com/v1/messages',
+				'default_model' => 'claude-3-5-haiku-latest',
+			),
+			'deepseek'  => array(
+				'label'      => 'DeepSeek',
+				'endpoint'   => 'https://api.deepseek.com/chat/completions',
+				'default_model' => 'deepseek-chat',
+			),
+			'custom'    => array(
+				'label'      => __( 'Свой endpoint (OpenAI-совместимый)', 'polygraph-calculator' ),
+				'endpoint'   => '',
+				'default_model' => '',
+			),
 		);
 	}
 
@@ -151,6 +188,46 @@ class PGCalc_Settings {
 				)
 			);
 		}
+
+		// Секция «ИИ: провайдер и база знаний».
+		add_settings_section(
+			'pgcalc_ai',
+			__( 'Интеллектуальный расчёт (ИИ)', 'polygraph-calculator' ),
+			array( $this, 'render_ai_section_intro' ),
+			'pgcalc-settings'
+		);
+
+		$ai_fields = array(
+			'ai_provider'      => __( 'Провайдер ИИ', 'polygraph-calculator' ),
+			'ai_api_key'       => __( 'API-ключ провайдера', 'polygraph-calculator' ),
+			'ai_model'         => __( 'Модель', 'polygraph-calculator' ),
+			'ai_endpoint'      => __( 'Свой endpoint (для режима «Свой»)', 'polygraph-calculator' ),
+			'ai_pricing_rules' => __( 'База знаний: прайс и правила расчёта', 'polygraph-calculator' ),
+		);
+
+		foreach ( $ai_fields as $key => $label ) {
+			add_settings_field(
+				'pgcalc_' . $key,
+				$label,
+				array( $this, 'render_field' ),
+				'pgcalc-settings',
+				'pgcalc_ai',
+				array(
+					'key'   => $key,
+					'label' => $label,
+				)
+			);
+		}
+	}
+
+	/**
+	 * Вступление к секции ИИ.
+	 */
+	public function render_ai_section_intro() {
+		echo '<p class="description">' . esc_html__(
+			'Если провайдер выбран и ключ заполнен, итоговая стоимость в режиме «Только ИИ» рассчитывается нейросетью на основе базы знаний ниже. Если нет — используется фиксированная цена за тему.',
+			'polygraph-calculator'
+		) . '</p>';
 	}
 
 	/**
@@ -201,6 +278,52 @@ class PGCalc_Settings {
 			return; // Отрисовывается отдельно (render_mode_field).
 		}
 
+		if ( 'ai_provider' === $key ) {
+			echo '<select name="' . esc_attr( $name ) . '">';
+			printf( '<option value="none" %s>%s</option>', selected( $value, 'none', false ), esc_html__( 'Без ИИ (фиксированная цена)', 'polygraph-calculator' ) );
+			foreach ( self::providers() as $pid => $p ) {
+				printf(
+					'<option value="%s" %s data-endpoint="%s" data-model="%s">%s</option>',
+					esc_attr( $pid ),
+					selected( $value, $pid, false ),
+					esc_attr( $p['endpoint'] ),
+					esc_attr( $p['default_model'] ),
+					esc_html( $p['label'] )
+				);
+			}
+			echo '</select>';
+			return;
+		}
+
+		if ( 'ai_pricing_rules' === $key ) {
+			printf(
+				'<textarea name="%s" rows="8" class="large-text code" placeholder="%s">%s</textarea>',
+				esc_attr( $name ),
+				esc_attr__( "Пример:\nТема по безопасности — 9000 руб.\nТема по финансам — 12000 руб.\nСрочность в выходные +30%.", 'polygraph-calculator' ),
+				esc_textarea( $value )
+			);
+			return;
+		}
+
+		if ( 'ai_api_key' === $key ) {
+			printf(
+				'<input type="password" class="regular-text" name="%s" value="%s" autocomplete="off" />',
+				esc_attr( $name ),
+				esc_attr( $value )
+			);
+			echo '<p class="description">' . esc_html__( 'Ключ хранится в базе только для администраторов и никогда не передаётся в браузер посетителя.', 'polygraph-calculator' ) . '</p>';
+			return;
+		}
+
+		if ( 'ai_endpoint' === $key || 'ai_model' === $key ) {
+			printf(
+				'<input type="text" class="large-text code" name="%s" value="%s" />',
+				esc_attr( $name ),
+				esc_attr( $value )
+			);
+			return;
+		}
+
 		$type = ( 'notify_email' === $key ) ? 'email' : 'number';
 		$step = ( 'pre_post_multiplier' === $key ) ? '0.01' : '1';
 		printf(
@@ -236,6 +359,15 @@ class PGCalc_Settings {
 		$out['notify_email']       = sanitize_email( $input['notify_email'] ?? $defaults['notify_email'] );
 		$out['enable_rest']        = ! empty( $input['enable_rest'] ) ? true : $defaults['enable_rest'];
 
+		$providers               = self::providers();
+		$out['ai_provider']      = in_array( $input['ai_provider'] ?? 'none', array_merge( array( 'none' ), array_keys( $providers ) ), true )
+			? $input['ai_provider']
+			: 'none';
+		$out['ai_api_key']       = sanitize_text_field( $input['ai_api_key'] ?? '' );
+		$out['ai_model']         = sanitize_text_field( $input['ai_model'] ?? $defaults['ai_model'] );
+		$out['ai_endpoint']      = esc_url_raw( $input['ai_endpoint'] ?? '' );
+		$out['ai_pricing_rules'] = wp_kses_post( $input['ai_pricing_rules'] ?? '' );
+
 		return $out;
 	}
 
@@ -260,6 +392,21 @@ class PGCalc_Settings {
 				submit_button();
 				?>
 			</form>
+
+			<script>
+			// Автоподстановка endpoint и модели при выборе провайдера ИИ.
+			(function () {
+				var sel = document.querySelector( 'select[name="<?php echo esc_js( self::OPTION_KEY ); ?>[ai_provider]"]' );
+				if ( ! sel ) return;
+				var ep = document.querySelector( 'input[name="<?php echo esc_js( self::OPTION_KEY ); ?>[ai_endpoint]"]' );
+				var md = document.querySelector( 'input[name="<?php echo esc_js( self::OPTION_KEY ); ?>[ai_model]"]' );
+				sel.addEventListener( 'change', function () {
+					var opt = sel.options[ sel.selectedIndex ];
+					if ( ep ) ep.value = opt.getAttribute( 'data-endpoint' ) || '';
+					if ( md && opt.getAttribute( 'data-model' ) ) md.value = opt.getAttribute( 'data-model' );
+				} );
+			})();
+			</script>
 		</div>
 		<?php
 	}

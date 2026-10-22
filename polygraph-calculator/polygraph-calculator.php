@@ -3,7 +3,7 @@
  * Plugin Name:       Polygraph Calculator
  * Plugin URI:        https://example.com/polygraph-calculator
  * Description:       Калькулятор стоимости услуг полиграфа для WordPress. Шорткод [polygraph_calculator], виджет и REST API.
- * Version:           1.0.0
+ * Version:           1.2.0
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            Polygraph Team
@@ -17,11 +17,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Прямой доступ запрещён.
 }
 
-define( 'PGCALC_VERSION', '1.0.0' );
+define( 'PGCALC_VERSION', '1.2.0' );
 define( 'PGCALC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PGCALC_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
 require_once PGCALC_PLUGIN_DIR . 'includes/class-pgcalc-settings.php';
+require_once PGCALC_PLUGIN_DIR . 'includes/class-pgcalc-ai.php';
 require_once PGCALC_PLUGIN_DIR . 'includes/class-pgcalc-shortcode.php';
 require_once PGCALC_PLUGIN_DIR . 'includes/class-pgcalc-widget.php';
 require_once PGCALC_PLUGIN_DIR . 'includes/class-pgcalc-rest.php';

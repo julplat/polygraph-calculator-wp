@@ -66,7 +66,7 @@ class PGCalc_Shortcode {
 
 		// Переопределение параметров атрибутами шорткода.
 		if ( '' !== $atts['base_price'] ) {
-			$settings['base_price'] = absint( $atts['base_price'] );
+			$settings[ 'ai' === $settings['calc_mode'] ? 'ai_price' : 'base_price' ] = absint( $atts['base_price'] );
 		}
 		if ( '' !== $atts['per_issue_price'] ) {
 			$settings['per_issue_price'] = absint( $atts['per_issue_price'] );
@@ -82,7 +82,11 @@ class PGCalc_Shortcode {
 		wp_enqueue_script( 'pgcalc-script' );
 
 		ob_start();
-		include PGCALC_PLUGIN_DIR . 'templates/calculator.php';
+		if ( 'ai' === $settings['calc_mode'] ) {
+			include PGCALC_PLUGIN_DIR . 'templates/calculator-ai.php';
+		} else {
+			include PGCALC_PLUGIN_DIR . 'templates/calculator.php';
+		}
 		return ob_get_clean();
 	}
 }

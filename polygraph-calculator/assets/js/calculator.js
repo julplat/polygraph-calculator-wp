@@ -37,13 +37,14 @@
 		var issuesInput = root.querySelector( '.pgcalc__issues' );
 		var issuesValue = root.querySelector( '.pgcalc__issues-value' );
 		var prepostInput = root.querySelector( '.pgcalc__prepost' );
+		var isAiMode = root.dataset.mode === 'ai';
 		var totalEl = root.querySelector( '.pgcalc__total' );
 		var form = root.querySelector( '.pgcalc__form' );
 		var notice = root.querySelector( '.pgcalc__notice' );
 		var submitBtn = root.querySelector( '.pgcalc__submit' );
 
 		function recalc() {
-			var persons = Math.max( 1, parseInt( personsInput.value, 10 ) || 1 );
+			var persons = personsInput ? Math.max( 1, parseInt( personsInput.value, 10 ) || 1 ) : 1;
 			var issues = Math.max( 1, parseInt( issuesInput.value, 10 ) || 1 );
 			var usePrepost = prepostInput && prepostInput.checked;
 
@@ -51,10 +52,16 @@
 				issuesValue.textContent = issues;
 			}
 
-			var total = basePrice + ( issues - 1 ) * perIssue;
-			total *= persons;
-			if ( usePrepost ) {
-				total *= multiplier;
+			var total;
+			if ( isAiMode ) {
+				// Режим «только ИИ»: цена за тему × количество тем.
+				total = basePrice * issues;
+			} else {
+				total = basePrice + ( issues - 1 ) * perIssue;
+				total *= persons;
+				if ( usePrepost ) {
+					total *= multiplier;
+				}
 			}
 			total = Math.round( total );
 

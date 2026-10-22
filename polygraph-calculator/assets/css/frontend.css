@@ -148,3 +148,17 @@
 		font-size: 19px;
 	}
 }
+
+/* Режим «только ИИ» — крупная итоговая сумма без расшифровки */
+.pgcalc--ai .pgcalc__result {
+	display: flex;
+	align-items: baseline;
+	gap: 10px;
+	margin-top: 16px;
+}
+
+.pgcalc--ai .pgcalc__total {
+	font-size: 32px;
+	line-height: 1.2;
+	color: #1a5c9e;
+}

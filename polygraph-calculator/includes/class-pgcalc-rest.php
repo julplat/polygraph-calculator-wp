@@ -97,9 +97,21 @@ class PGCalc_Rest {
 	public function get_quote( WP_REST_Request $request ) {
 		$settings = PGCalc_Settings::get_settings();
 
-		$issues       = min( $settings['max_issues'], max( 1, absint( $request->get_param( 'issues' ) ) ) );
-		$persons      = min( 50, max( 1, absint( $request->get_param( 'persons' ) ) ) );
-		$pre_post     = rest_sanitize_boolean( $request->get_param( 'pre_post' ) );
+		$issues  = min( $settings['max_issues'], max( 1, absint( $request->get_param( 'issues' ) ) ) );
+		$persons = min( 50, max( 1, absint( $request->get_param( 'persons' ) ) ) );
+		$pre_post = rest_sanitize_boolean( $request->get_param( 'pre_post' ) );
+
+		if ( 'ai' === $settings['calc_mode'] ) {
+			// Режим «только ИИ»: цена за тему × количество тем.
+			$total = (int) round( $settings['ai_price'] * $issues );
+
+			return rest_ensure_response(
+				array(
+					'total'    => $total,
+					'currency' => $settings['currency'],
+				)
+			);
+		}
 
 		$total = $settings['base_price']
 			+ ( $issues - 1 ) * $settings['per_issue_price'];

@@ -30,10 +30,13 @@ class PGCalc_Settings {
 	 */
 	public static function defaults() {
 		return array(
-			'base_price'         => 5000,   // Базовая стоимость проверки (1 человек, 1 тема).
-			'per_issue_price'    => 1500,   // Стоимость каждой дополнительной темы/вопроса.
+			// Режим «только ИИ»: цена задаётся вручную, калькулятор показывает только итог.
+			'calc_mode'          => 'ai',   // ai | formula
+			'ai_price'           => 7000,   // Фиксированная цена за одну тему (режим ИИ).
+			'base_price'         => 5000,   // Базовая стоимость проверки (1 чел., 1 тема) — режим формулы.
+			'per_issue_price'    => 1500,   // Стоимость доп. темы — режим формулы.
 			'max_issues'         => 20,     // Максимум тем в калькуляторе.
-			'pre_post_multiplier' => 1.5,    // Множитель для пред-/постпроверочной диагностики.
+			'pre_post_multiplier' => 1.5,    // Множитель для пред-/постдиагностики (режим формулы).
 			'currency'           => 'RUB',  // Валюта: RUB, USD, EUR, KZT, UAH.
 			'notify_email'       => get_option( 'admin_email' ),
 			'enable_rest'        => true,
@@ -116,11 +119,21 @@ class PGCalc_Settings {
 			'pgcalc-settings'
 		);
 
+		// Режим работы калькулятора (радио: только ИИ / формула).
+		add_settings_field(
+			'pgcalc_calc_mode',
+			__( 'Режим калькулятора', 'polygraph-calculator' ),
+			array( $this, 'render_mode_field' ),
+			'pgcalc-settings',
+			'pgcalc_main'
+		);
+
 		$fields = array(
-			'base_price'          => __( 'Базовая стоимость проверки', 'polygraph-calculator' ),
-			'per_issue_price'     => __( 'Стоимость дополнительной темы', 'polygraph-calculator' ),
+			'ai_price'            => __( 'Цена за 1 тему (режим «только ИИ»)', 'polygraph-calculator' ),
+			'base_price'          => __( 'Базовая стоимость проверки (формула)', 'polygraph-calculator' ),
+			'per_issue_price'     => __( 'Стоимость дополнительной темы (формула)', 'polygraph-calculator' ),
 			'max_issues'          => __( 'Максимальное количество тем', 'polygraph-calculator' ),
-			'pre_post_multiplier' => __( 'Множитель пред-/постдиагностики', 'polygraph-calculator' ),
+			'pre_post_multiplier' => __( 'Множитель пред-/постдиагностики (формула)', 'polygraph-calculator' ),
 			'currency'            => __( 'Валюта', 'polygraph-calculator' ),
 			'notify_email'        => __( 'E-mail для заявок', 'polygraph-calculator' ),
 		);
@@ -138,6 +151,25 @@ class PGCalc_Settings {
 				)
 			);
 		}
+	}
+
+	/**
+	 * Отрисовка переключателя режима калькулятора.
+	 */
+	public function render_mode_field() {
+		$settings = self::get_settings();
+		$name     = self::OPTION_KEY . '[calc_mode]';
+		$value    = $settings['calc_mode'];
+		?>
+		<label style="display:block">
+			<input type="radio" name="<?php echo esc_attr( $name ); ?>" value="ai" <?php checked( $value, 'ai' ); ?> />
+			<?php esc_html_e( 'Только ИИ — клиент видит единственное поле «тема» и только итоговую сумму без расшифровки (рекомендуется)', 'polygraph-calculator' ); ?>
+		</label>
+		<label style="display:block">
+			<input type="radio" name="<?php echo esc_attr( $name ); ?>" value="formula" <?php checked( $value, 'formula' ); ?> />
+			<?php esc_html_e( 'Формула — подробный расчёт (кол-во проверяемых, темы, диагностика)', 'polygraph-calculator' ); ?>
+		</label>
+		<?php
 	}
 
 	/**
@@ -165,6 +197,10 @@ class PGCalc_Settings {
 			return;
 		}
 
+		if ( 'calc_mode' === $key ) {
+			return; // Отрисовывается отдельно (render_mode_field).
+		}
+
 		$type = ( 'notify_email' === $key ) ? 'email' : 'number';
 		$step = ( 'pre_post_multiplier' === $key ) ? '0.01' : '1';
 		printf(
@@ -186,6 +222,10 @@ class PGCalc_Settings {
 		$defaults = self::defaults();
 		$out      = array();
 
+		$out['calc_mode']          = in_array( $input['calc_mode'] ?? '', array( 'ai', 'formula' ), true )
+			? $input['calc_mode']
+			: $defaults['calc_mode'];
+		$out['ai_price']           = max( 0, absint( $input['ai_price'] ?? $defaults['ai_price'] ) );
 		$out['base_price']         = max( 0, absint( $input['base_price'] ?? $defaults['base_price'] ) );
 		$out['per_issue_price']    = max( 0, absint( $input['per_issue_price'] ?? $defaults['per_issue_price'] ) );
 		$out['max_issues']         = min( 100, max( 1, absint( $input['max_issues'] ?? $defaults['max_issues'] ) ) );

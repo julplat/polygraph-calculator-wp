@@ -1,6 +1,8 @@
 <?php
 /**
- * Шорткод [polygraph_calculator].
+ * Шорткод [polygraph_calculator] — калькулятор с диалогом на сайте.
+ * Настройки и диалоги живут в админке плагина (меню «Калькулятор Polygraph»),
+ * здесь только виджет для посетителей.
  *
  * @package polygraph-calculator
  */
@@ -9,84 +11,95 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-/**
- * Класс шорткода калькулятора.
- */
-class PGCalc_Shortcode {
+class PGCALC_SHORTCODE {
 
-	/**
-	 * Singleton.
-	 *
-	 * @var PGCalc_Shortcode|null
-	 */
-	private static $instance = null;
-
-	/**
-	 * Получение singleton-экземпляра.
-	 *
-	 * @return PGCalc_Shortcode
-	 */
-	public static function get_instance() {
-		if ( null === self::$instance ) {
-			self::$instance = new self();
-		}
-		return self::$instance;
+	public static function init() {
+		add_shortcode( 'polygraph_calculator', array( __CLASS__, 'render' ) );
 	}
 
-	/**
-	 * Регистрация шорткода.
-	 */
-	public function init() {
-		add_shortcode( 'polygraph_calculator', array( $this, 'render' ) );
-	}
+	public static function render( $atts ) {
+		$atts = shortcode_atts( array( 'title' => __( 'Расчёт стоимости печати', 'polygraph-calculator' ) ), $atts, 'polygraph_calculator' );
 
-	/**
-	 * Отрисовка калькулятора.
-	 *
-	 * Атрибуты:
-	 *  - title: заголовок блока.
-	 *  - base_price / per_issue_price / max_issues / currency: переопределение настроек.
-	 *
-	 * @param array|string $atts Атрибуты шорткода.
-	 * @return string HTML.
-	 */
-	public function render( $atts ) {
-		$atts     = shortcode_atts(
+		wp_enqueue_style( 'pgcalc-frontend', PGCALC_PLUGIN_URL . 'assets/css/frontend.css', array(), PGCALC_VERSION );
+		wp_enqueue_script( 'pgcalc-frontend', PGCALC_PLUGIN_URL . 'assets/js/frontend.js', array(), PGCALC_VERSION, true );
+		wp_localize_script(
+			'pgcalc-frontend',
+			'PGCALC_FRONT',
 			array(
-				'title'           => __( 'Калькулятор стоимости полиграфной проверки', 'polygraph-calculator' ),
-				'base_price'      => '',
-				'per_issue_price' => '',
-				'max_issues'      => '',
-				'currency'        => '',
-			),
-			$atts,
-			'polygraph_calculator'
+				'restUrl'  => esc_url_raw( rest_url( PGCALC_REST::NS . '/' ) ),
+				'nonce'    => wp_create_nonce( 'wp_rest' ),
+				'mode'     => get_option( 'pgcalc_dialog_mode', 'parser' ),
+				'showDetail' => (bool) get_option( 'pgcalc_show_breakdown', false ),
+				'materials' => self::materials_public(),
+				'sizes'     => self::sizes_public(),
+				'i18n'      => array(
+					'initial'    => PGCALC_DIALOG::initial_question(),
+					'thinking'   => __( '…', 'polygraph-calculator' ),
+					'save'       => __( 'Сохранить', 'polygraph-calculator' ),
+					'excel'      => __( 'Excel', 'polygraph-calculator' ),
+					'history'    => __( 'История', 'polygraph-calculator' ),
+					'namePh'     => __( 'Ваше имя', 'polygraph-calculator' ),
+					'phonePh'    => __( 'Телефон', 'polygraph-calculator' ),
+					'saved'      => __( 'Расчёт сохранён ✓', 'polygraph-calculator' ),
+					'errSend'    => __( 'Ошибка соединения. Попробуйте ещё раз.', 'polygraph-calculator' ),
+					'total'      => __( 'ИТОГО', 'polygraph-calculator' ),
+					'forClient'  => __( 'Итого для клиента:', 'polygraph-calculator' ),
+					'flyer'      => __( 'Листовка', 'polygraph-calculator' ),
+					'booklet'    => __( 'Буклет', 'polygraph-calculator' ),
+					'startHint'  => __( 'Начните диалог для расчёта', 'polygraph-calculator' ),
+					'managerNote' => __( 'По этому варианту точный расчёт лучше доверить менеджеру — он быстро подберёт решение под задачу.', 'polygraph-calculator' ),
+					'send'       => __( 'Отправить', 'polygraph-calculator' ),
+					'inputPh'    => __( 'Опишите заказ…', 'polygraph-calculator' ),
+				),
+			)
 		);
-		$settings = PGCalc_Settings::get_settings();
-
-		// Переопределение параметров атрибутами шорткода.
-		if ( '' !== $atts['base_price'] ) {
-			$settings[ 'ai' === $settings['calc_mode'] ? 'ai_price' : 'base_price' ] = absint( $atts['base_price'] );
-		}
-		if ( '' !== $atts['per_issue_price'] ) {
-			$settings['per_issue_price'] = absint( $atts['per_issue_price'] );
-		}
-		if ( '' !== $atts['max_issues'] ) {
-			$settings['max_issues'] = min( 100, max( 1, absint( $atts['max_issues'] ) ) );
-		}
-		if ( '' !== $atts['currency'] ) {
-			$settings['currency'] = strtoupper( sanitize_text_field( $atts['currency'] ) );
-		}
-
-		wp_enqueue_style( 'pgcalc-style' );
-		wp_enqueue_script( 'pgcalc-script' );
 
 		ob_start();
-		if ( 'ai' === $settings['calc_mode'] ) {
-			include PGCALC_PLUGIN_DIR . 'templates/calculator-ai.php';
-		} else {
-			include PGCALC_PLUGIN_DIR . 'templates/calculator.php';
-		}
+		?>
+		<div class="pgc-app" data-title="<?php echo esc_attr( $atts['title'] ); ?>">
+			<div class="pgc-header">
+				<h3 class="pgc-title"><?php echo esc_html( $atts['title'] ); ?></h3>
+				<span class="pgc-mode-badge"><?php echo 'ai' === get_option( 'pgcalc_dialog_mode', 'parser' ) ? '🤖 ИИ' : '🔧 ' . esc_html__( 'Парсер', 'polygraph-calculator' ); ?></span>
+			</div>
+			<div class="pgc-body">
+				<div class="pgc-chat-col">
+					<div class="pgc-chat" data-chat></div>
+					<div class="pgc-input-row">
+						<input type="text" data-input class="pgc-input" placeholder="<?php esc_attr_e( 'Например: листовки А6, 100 шт, бумага 120 г, печать 4+0', 'polygraph-calculator' ); ?>" />
+						<button class="pgc-btn pgc-btn-primary" data-send><?php esc_html_e( '➤', 'polygraph-calculator' ); ?></button>
+					</div>
+				</div>
+				<div class="pgc-result-col" data-result-col>
+					<div class="pgc-result-empty"><span>📊</span><p><?php esc_html_e( 'Начните диалог для расчёта', 'polygraph-calculator' ); ?></p></div>
+				</div>
+			</div>
+			<div class="pgc-footer">
+				<button class="pgc-btn pgc-btn-save" data-save disabled>💾 <?php esc_html_e( 'Сохранить', 'polygraph-calculator' ); ?></button>
+				<button class="pgc-btn pgc-btn-excel" data-excel disabled>⬇ Excel</button>
+				<span class="pgc-save-msg" data-save-msg></span>
+			</div>
+		</div>
+		<?php
 		return ob_get_clean();
+	}
+
+	/** Публичные данные материалов (без цен — цены не отдаём клиенту). */
+	private static function materials_public() {
+		$out = array();
+		foreach ( PGCALC_DB::get_materials() as $m ) {
+			$out[] = array(
+				'id'   => $m->id,
+				'name' => PGCALC_ENGINE::material_display_name( $m->id ),
+			);
+		}
+		return $out;
+	}
+
+	private static function sizes_public() {
+		$out = array();
+		foreach ( PGCALC_DB::get_sizes() as $s ) {
+			$out[] = array( 'name' => $s->name, 'w' => (int) $s->w, 'h' => (int) $s->h );
+		}
+		return $out;
 	}
 }

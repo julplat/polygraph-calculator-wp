@@ -22,8 +22,32 @@ class PGCALC_ADMIN {
 
 	public static function init() {
 		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ) );
-		add_action( 'admin_init', array( __CLASS__, 'handle_actions' ) );
+		add_action( 'load-toplevel_page_pgcalc', array( __CLASS__, 'handle_actions' ) );
+		add_action( 'load-polygraph-calculator_page_pgcalc-kb', array( __CLASS__, 'handle_actions' ) );
+		add_action( 'load-polygraph-calculator_page_pgcalc-ai', array( __CLASS__, 'handle_actions' ) );
+		add_action( 'load-polygraph-calculator_page_pgcalc-history', array( __CLASS__, 'handle_actions' ) );
 		add_action( 'admin_post_pgcalc_reset_db', array( __CLASS__, 'action_reset_db' ) );
+	}
+
+	/**
+	 * Ключ текущей админ-страницы плагина (для redirect после сохранения).
+	 */
+	private static function current_page_slug() {
+		if ( function_exists( 'get_current_screen' ) ) {
+			$screen = get_current_screen();
+			if ( $screen && ! empty( $screen->id ) ) {
+				// "polygraph-calculator_page_pgcalc-kb" -> "pgcalc-kb", "toplevel_page_pgcalc" -> "pgcalc".
+				$id = $screen->id;
+				if ( false !== strpos( $id, '_page_' ) ) {
+					return substr( $id, strrpos( $id, '_page_' ) + 6 );
+				}
+				if ( 0 === strpos( $id, 'toplevel_page_' ) ) {
+					return substr( $id, strlen( 'toplevel_page_' ) );
+				}
+				return $id;
+			}
+		}
+		return isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : self::MENU_SLUG; // phpcs:ignore
 	}
 
 	public static function register_menu() {
@@ -52,12 +76,17 @@ class PGCALC_ADMIN {
 			return;
 		}
 
+		// Все POST-формы плагина отправляются на саму страницу (admin.php?page=...),
+		// обрабатываются на хуке load-* и завершаются redirect-ом (паттерн PRG):
+		// без редиректа браузер может повторно отправить устаревший nonce («залипшая»
+		// вкладка, автозаполнение формы) — сохранение провалится молча.
+		$redirect = false;
+
 		// Сохранение приладок.
 		if ( isset( $_POST['pgcalc_setup_nonce'] ) && wp_verify_nonce( sanitize_key( $_POST['pgcalc_setup_nonce'] ), 'pgcalc_setup' ) ) {
-			update_option( 'pgcalc_setup_print', max( 0, (float) isset( $_POST['setup_print'] ) ? sanitize_text_field( wp_unslash( $_POST['setup_print'] ) ) : 700 ) );
-			update_option( 'pgcalc_setup_cut', max( 0, (float) isset( $_POST['setup_cut'] ) ? sanitize_text_field( wp_unslash( $_POST['setup_cut'] ) ) : 200 ) );
-			add_settings_error( 'pgcalc', 'setup_saved', __( 'Приладки сохранены.', 'polygraph-calculator' ) );
-			set_transient( 'settings_errors', get_settings_errors(), 30 );
+			update_option( 'pgcalc_setup_print', max( 0, (float) ( isset( $_POST['setup_print'] ) ? sanitize_text_field( wp_unslash( $_POST['setup_print'] ) ) : 700 ) ) );
+			update_option( 'pgcalc_setup_cut', max( 0, (float) ( isset( $_POST['setup_cut'] ) ? sanitize_text_field( wp_unslash( $_POST['setup_cut'] ) ) : 200 ) ) );
+			$redirect = 'pgcalc_kb';
 		}
 
 		// Материал: сохранить/удалить.
@@ -110,7 +139,7 @@ class PGCALC_ADMIN {
 			} elseif ( 'delete_tariff' === $act && isset( $_POST['del_id'] ) ) {
 				PGCALC_DB::delete_tariff( absint( $_POST['del_id'] ) );
 			}
-			add_settings_error( 'pgcalc', 'kb_saved', __( 'База знаний обновлена.', 'polygraph-calculator' ) );
+			$redirect = 'pgcalc-kb';
 		}
 
 		// Настройки ИИ.
@@ -125,7 +154,7 @@ class PGCALC_ADMIN {
 			update_option( 'pgcalc_ai_model', sanitize_text_field( isset( $_POST['ai_model'] ) ? wp_unslash( $_POST['ai_model'] ) : '' ) );
 			update_option( 'pgcalc_notify_email', sanitize_email( isset( $_POST['notify_email'] ) ? wp_unslash( $_POST['notify_email'] ) : '' ) );
 			update_option( 'pgcalc_show_breakdown', empty( $_POST['show_breakdown'] ) ? 0 : 1 );
-			add_settings_error( 'pgcalc', 'ai_saved', __( 'Настройки ИИ сохранены.', 'polygraph-calculator' ) );
+			$redirect = 'pgcalc-ai';
 		}
 
 		// История: удаление/очистка.
@@ -136,7 +165,16 @@ class PGCALC_ADMIN {
 			if ( isset( $_POST['clear_all'] ) ) {
 				PGCALC_DB::clear_history();
 			}
-			add_settings_error( 'pgcalc', 'hist_saved', __( 'История обновлена.', 'polygraph-calculator' ) );
+			$redirect = 'pgcalc-history';
+		}
+
+		// POST обработан (или пришёл со старым nonce) — редирект с сообщением (PRG),
+		// чтобы форма не отправлялась повторно и страница всегда показывала свежий nonce.
+		if ( isset( $_SERVER['REQUEST_METHOD'] ) && 'POST' === strtoupper( $_SERVER['REQUEST_METHOD'] ) ) {
+			$page = $redirect ? $redirect : self::current_page_slug();
+			$msg  = $redirect ? 'saved' : 'expired';
+			wp_safe_redirect( admin_url( 'admin.php?page=' . rawurlencode( $page ) . '&pgcalc_msg=' . $msg ) );
+			exit;
 		}
 	}
 
@@ -160,7 +198,13 @@ class PGCALC_ADMIN {
 		echo '<div class="wrap pgcalc-wrap">'
 			. '<div class="pgcalc-hero"><h1>' . esc_html( $title ) . '</h1>'
 			. '<p>Polygraph Calculator — настройки, база знаний и тест диалога в одном месте.</p></div>';
-		settings_errors();
+		if ( isset( $_GET['pgcalc_msg'] ) ) {
+			if ( 'saved' === $_GET['pgcalc_msg'] ) {
+				echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Изменения сохранены.', 'polygraph-calculator' ) . '</p></div>';
+			} else {
+				echo '<div class="notice notice-warning is-dismissible"><p>' . esc_html__( 'Форма устарела (страница была открыта давно). Обновите страницу и сохраните ещё раз.', 'polygraph-calculator' ) . '</p></div>';
+			}
+		}
 	}
 
 	/* ---------- Страница: калькулятор (тест диалога) ---------- */

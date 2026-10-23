@@ -58,7 +58,6 @@
 			html += '<h4>💰Итого</h4>';
 			html += '<p class="pgc-res-summary">' + esc(typeName) + ' ' + esc(sizeStr) + ', ' + esc(params.quantity) + ' шт, ' + esc(matName(params.materialId)) + ', печать ' + esc(params.printing) + (params.creasing ? ', биговка ' + esc(params.creasingCount || 2) : '') + '</p>';
 			html += '<p class="pgc-res-price">' + fmt(res.total) + '</p>';
-			html += '<p class="pgc-res-disclaimer">' + esc(cfg.i18n.disclaimer) + '</p>';
 			html += '</div>';
 			return html;
 		}
@@ -110,9 +109,10 @@
 			var form = document.createElement('div');
 			form.className = 'pgc-save-form';
 			form.innerHTML =
-				'<p class="pgc-form-title">Оставьте контакты — менеджер свяжется с вами и подтвердит стоимость</p>' +
+				'<p class="pgc-form-title">' + esc(cfg.i18n.formTitle) + '</p>' +
 				'<input class="pgc-in" data-name placeholder="' + esc(cfg.i18n.namePh) + '" />' +
 				'<input class="pgc-in" data-phone type="tel" placeholder="' + esc(cfg.i18n.phonePh) + '" />' +
+				'<p class="pgc-call-note">' + esc(cfg.i18n.callNote) + '</p>' +
 				'<button class="pgc-btn pgc-btn-primary" data-ok>' + esc(cfg.i18n.send || 'Отправить') + '</button>' +
 				'<span class="pgc-form-msg" data-form-msg></span>' +
 				leadConsentHtml();

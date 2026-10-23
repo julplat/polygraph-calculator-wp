@@ -41,7 +41,8 @@ class PGCALC_SHORTCODE {
 					'errSend'    => __( 'Ошибка соединения. Попробуйте ещё раз.', 'polygraph-calculator' ),
 					'total'      => __( 'ИТОГО', 'polygraph-calculator' ),
 					'forClient'  => __( 'Итого', 'polygraph-calculator' ),
-					'disclaimer' => __( 'Стоимость услуги ориентировочная, точную стоимость подтвердит менеджер.', 'polygraph-calculator' ),
+					'formTitle'  => __( 'Стоимость ориентировочная. Оставьте телефон — менеджер подтвердит точную цену.', 'polygraph-calculator' ),
+					'callNote'   => __( 'Перезвоним или напишем в течение рабочего дня', 'polygraph-calculator' ),
 					'privacyText' => __( 'Отправляя сообщение, вы соглашаетесь с', 'polygraph-calculator' ),
 					'privacyLink' => __( 'политикой обработки персональных данных.', 'polygraph-calculator' ),
 					'privacyUrl'  => 'https://www.aeroplane-media.ru/licenses-detail/',
@@ -74,7 +75,6 @@ class PGCALC_SHORTCODE {
 					<div class="pgc-result-empty"><span>📊</span><p><?php esc_html_e( 'Начните диалог для расчёта', 'polygraph-calculator' ); ?></p></div>
 				</div>
 			</div>
-			<p class="pgc-disclaimer"><?php esc_html_e( 'Стоимость услуги ориентировочная, точную стоимость подтвердит менеджер.', 'polygraph-calculator' ); ?></p>
 			<p class="pgc-privacy"><?php esc_html_e( 'Отправляя сообщение, вы соглашаетесь с', 'polygraph-calculator' ); ?> <a href="https://www.aeroplane-media.ru/licenses-detail/" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'политикой обработки персональных данных.', 'polygraph-calculator' ); ?></a></p>
 		</div>
 		<?php

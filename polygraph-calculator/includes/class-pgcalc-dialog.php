@@ -12,7 +12,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 class PGCALC_DIALOG {
 
 	public static function initial_question() {
-		return __( 'Опишите заказ: тип (листовка/буклет), размер, количество, материал, печать (4+0/4+4). Для буклета — нужна ли биговка и сколько сгибов.', 'polygraph-calculator' );
+		$text = get_option( 'pgcalc_first_question', '' );
+		if ( '' === trim( (string) $text ) ) {
+			$text = __( 'Опишите заказ: тип (листовка/буклет), размер, количество, материал, печать (4+0/4+4). Для буклета — нужна ли биговка и сколько сгибов.', 'polygraph-calculator' );
+		}
+		return wp_kses_post( $text );
 	}
 
 	public static function initial_params() {

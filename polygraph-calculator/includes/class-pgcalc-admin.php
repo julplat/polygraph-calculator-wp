@@ -154,6 +154,7 @@ class PGCALC_ADMIN {
 			update_option( 'pgcalc_ai_model', sanitize_text_field( isset( $_POST['ai_model'] ) ? wp_unslash( $_POST['ai_model'] ) : '' ) );
 			update_option( 'pgcalc_notify_email', sanitize_email( isset( $_POST['notify_email'] ) ? wp_unslash( $_POST['notify_email'] ) : '' ) );
 			update_option( 'pgcalc_show_breakdown', empty( $_POST['show_breakdown'] ) ? 0 : 1 );
+			update_option( 'pgcalc_first_question', wp_kses_post( isset( $_POST['first_question'] ) ? trim( wp_unslash( $_POST['first_question'] ) ) : '' ) );
 			$redirect = 'pgcalc-ai';
 		}
 
@@ -450,6 +451,13 @@ class PGCALC_ADMIN {
 					<th scope="row"><?php esc_html_e( 'Что видит клиент', 'polygraph-calculator' ); ?></th>
 					<td>
 						<label><input type="checkbox" name="show_breakdown" value="1" <?php checked( (bool) get_option( 'pgcalc_show_breakdown', false ) ); ?> /> <?php esc_html_e( 'Показывать детализацию (обычно выключено — только итоговая сумма)', 'polygraph-calculator' ); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="first_question"><?php esc_html_e( 'Первый вопрос клиенту', 'polygraph-calculator' ); ?></label></th>
+					<td>
+						<textarea id="first_question" name="first_question" rows="3" class="large-text"><?php echo esc_textarea( get_option( 'pgcalc_first_question', '' ) ); ?></textarea>
+						<p class="description"><?php esc_html_e( 'Текст, который калькулятор показывает клиенту в начале диалога. Оставьте пустым, чтобы использовать текст по умолчанию.', 'polygraph-calculator' ); ?></p>
 					</td>
 				</tr>
 			</table>
